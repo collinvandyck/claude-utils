@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(/tmp/claude-statusline pprof:*)",
+      "Bash(npm info:*)",
+      "Bash(/tmp/claude-statusline)"
+    ]
+  }
+}
