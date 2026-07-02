@@ -308,14 +308,22 @@ func (r *renderer) renderModel() (string, error) {
 }
 
 func (r *renderer) renderPath() (string, error) {
-	dir := r.status.Workspace.CurrentDir
+	cwd := r.status.Workspace.CurrentDir
+	prj := r.status.Workspace.ProjectDir
 	if gitRoot := r.gitInfo.projectRoot(); gitRoot != "" {
-		rel, _ := filepath.Rel(gitRoot, dir)
-		if rel != "" {
-			dir = filepath.Join(filepath.Base(gitRoot), rel)
+		if rel, _ := filepath.Rel(gitRoot, prj); rel != "" {
+			prj = filepath.Join(filepath.Base(gitRoot), rel)
+		}
+		if rel, _ := filepath.Rel(gitRoot, cwd); rel != "" {
+			cwd = filepath.Join(filepath.Base(gitRoot), rel)
 		}
 	}
-	return r.styles.dir.Render(dir), nil
+	var paths []string
+	paths = append(paths, r.styles.dir.Render(cwd))
+	if prj != cwd {
+		paths = append(paths, r.styles.dir.Render(prj))
+	}
+	return strings.Join(paths, " "), nil
 }
 
 func (r *renderer) renderBranch() (string, error) {

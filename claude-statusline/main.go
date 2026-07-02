@@ -88,11 +88,8 @@ type (
 	}
 )
 
-func init() {
-	lipgloss.Writer.Profile = colorprofile.ANSI256
-}
-
 func main() {
+	lipgloss.Writer.Profile = colorprofile.ANSI256
 	cmd := cobra.Command{
 		SilenceUsage: true,
 	}
