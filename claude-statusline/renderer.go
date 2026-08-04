@@ -318,12 +318,33 @@ func (r *renderer) renderPath() (string, error) {
 			cwd = filepath.Join(filepath.Base(gitRoot), rel)
 		}
 	}
-	var paths []string
-	paths = append(paths, r.styles.dir.Render(cwd))
-	if prj != cwd {
-		paths = append(paths, r.styles.dir.Render(prj))
+	var err error
+	cwd, err = tildify(cwd)
+	if err != nil {
+		return "", err
 	}
+	prj, err = tildify(prj)
+	if err != nil {
+		return "", err
+	}
+
+	var paths []string
+	if prj != cwd {
+		paths = append(paths, r.styles.dir.Render("[p] "+prj))
+	}
+	paths = append(paths, r.styles.dir.Render("[c] "+cwd))
 	return strings.Join(paths, " "), nil
+}
+
+func tildify(path string) (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	if rel, ok := strings.CutPrefix(path, home+string(os.PathSeparator)); ok {
+		return "~" + string(os.PathSeparator) + rel, nil
+	}
+	return path, nil
 }
 
 func (r *renderer) renderBranch() (string, error) {
