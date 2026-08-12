@@ -330,9 +330,9 @@ func (r *renderer) renderPath() (string, error) {
 
 	var paths []string
 	if prj != cwd {
-		paths = append(paths, r.styles.dir.Render("[p] "+prj))
+		paths = append(paths, r.styles.dir.Render("[s] "+prj))
 	}
-	paths = append(paths, r.styles.dir.Render("[c] "+cwd))
+	paths = append(paths, r.styles.dir.Render("[d] "+cwd))
 	return strings.Join(paths, " "), nil
 }
 
