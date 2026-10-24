@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/go-git/go-billy/v6/osfs"
 	"github.com/go-git/go-git/v6"
+	"github.com/go-git/go-git/v6/plumbing"
 	"github.com/go-git/go-git/v6/plumbing/format/gitignore"
 )
 
@@ -77,6 +79,13 @@ func (g *gitInfo) projectRoot() string {
 func (g *gitInfo) head() (info headInfo, err error) {
 	if g.repo != nil {
 		ref, err := g.repo.Head()
+		if errors.Is(err, plumbing.ErrReferenceNotFound) {
+			// Unborn branch (no commits yet): HEAD is a symbolic ref to a
+			// branch that doesn't exist, so Head() can't resolve it.
+			if sym, serr := g.repo.Reference(plumbing.HEAD, false); serr == nil && sym.Type() == plumbing.SymbolicReference {
+				return headInfo{isBranch: true, name: sym.Target().Short()}, nil
+			}
+		}
 		if err != nil {
 			return info, err
 		}
