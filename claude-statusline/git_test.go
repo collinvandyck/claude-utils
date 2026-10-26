@@ -1,6 +1,31 @@
 package main
 
-import "testing"
+import (
+	"os/exec"
+	"testing"
+)
+
+func TestHeadUnbornBranch(t *testing.T) {
+	dir := t.TempDir()
+	if out, err := exec.Command("git", "init", "-q", "-b", "main", dir).CombinedOutput(); err != nil {
+		t.Fatalf("git init: %v: %s", err, out)
+	}
+	var status Status
+	status.Workspace.CurrentDir = dir
+	status.Workspace.ProjectDir = dir
+	g, err := newGitInfo(status)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer g.close()
+	got, err := g.head()
+	if err != nil {
+		t.Fatalf("head() error: %v", err)
+	}
+	if !got.isBranch || got.name != "main" {
+		t.Errorf("head() = %+v, want branch main", got)
+	}
+}
 
 func TestGitRemoteToHTTPS(t *testing.T) {
 	tests := []struct {
