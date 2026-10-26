@@ -14,6 +14,8 @@ import (
 	"golang.org/x/term"
 )
 
+const maxPathLen = 40
+
 type (
 	component interface {
 		render() (string, error)
@@ -308,22 +310,12 @@ func (r *renderer) renderModel() (string, error) {
 }
 
 func (r *renderer) renderPath() (string, error) {
-	cwd := r.status.Workspace.CurrentDir
-	prj := r.status.Workspace.ProjectDir
-	if gitRoot := r.gitInfo.projectRoot(); gitRoot != "" {
-		if rel, _ := filepath.Rel(gitRoot, prj); rel != "" {
-			prj = filepath.Join(filepath.Base(gitRoot), rel)
-		}
-		if rel, _ := filepath.Rel(gitRoot, cwd); rel != "" {
-			cwd = filepath.Join(filepath.Base(gitRoot), rel)
-		}
-	}
-	var err error
-	cwd, err = tildify(cwd)
+	gitRoot := r.gitInfo.projectRoot()
+	cwd, err := displayPath(gitRoot, r.status.Workspace.CurrentDir)
 	if err != nil {
 		return "", err
 	}
-	prj, err = tildify(prj)
+	prj, err := displayPath(gitRoot, r.status.Workspace.ProjectDir)
 	if err != nil {
 		return "", err
 	}
@@ -334,6 +326,46 @@ func (r *renderer) renderPath() (string, error) {
 	}
 	paths = append(paths, r.styles.dir.Render("[d] "+cwd))
 	return strings.Join(paths, " "), nil
+}
+
+// displayPath shows path relative to the git root when it lives inside it, and otherwise as a tildified absolute
+// path. Paths outside the root would otherwise render as a long run of "../" segments.
+func displayPath(gitRoot, path string) (string, error) {
+	if gitRoot != "" {
+		rel, err := filepath.Rel(gitRoot, path)
+		if err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
+			return shortenPath(filepath.Join(filepath.Base(gitRoot), rel)), nil
+		}
+	}
+	// On macOS /tmp and /var are symlinks into /private.
+	for _, dir := range []string{"/private/tmp", "/private/var"} {
+		if path == dir || strings.HasPrefix(path, dir+"/") {
+			path = strings.TrimPrefix(path, "/private")
+			break
+		}
+	}
+	path, err := tildify(path)
+	if err != nil {
+		return "", err
+	}
+	return shortenPath(path), nil
+}
+
+// shortenPath keeps the leading and last two segments of a path longer than maxPathLen, e.g. /tmp/.../scratchpad/foo.
+func shortenPath(path string) string {
+	if len(path) <= maxPathLen {
+		return path
+	}
+	sep := string(os.PathSeparator)
+	segs := strings.Split(path, sep)
+	head, rest := segs[0], segs[1:]
+	if head == "" && len(rest) > 0 {
+		head, rest = sep+rest[0], rest[1:]
+	}
+	if len(rest) <= 3 {
+		return path
+	}
+	return strings.Join([]string{head, "...", rest[len(rest)-2], rest[len(rest)-1]}, sep)
 }
 
 func tildify(path string) (string, error) {
